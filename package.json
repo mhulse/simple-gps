@@ -1,0 +1,24 @@
+{
+  "name": "equirectangular",
+  "version": "1.0.0",
+  "description": "Read/write GPS data …",
+  "author": "Michael Hulse",
+  "license": "Apache 2.0",
+  "scripts": {
+    "test": "mocha ./test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mhulse/simple-gps.git"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "await-exec": "^0.1.2",
+    "fs-extra": "^7.0.1",
+    "untildify": "^3.0.3"
+  },
+  "devDependencies": {
+    "eslint": "^5.15.3",
+    "mocha": "^6.0.2"
+  }
+}
