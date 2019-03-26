@@ -3,33 +3,55 @@ const { commands, util } = require('./lib/index');
 
 module.exports = (() => {
 
+  function formatResult(command, result) {
+
+    switch (command) {
+
+      case 'write':
+
+        result = 'written';
+
+        break;
+
+      case 'read':
+
+        result = util.makeObject(result);
+
+        break;
+
+      case 'delete':
+
+        result = 'deleted';
+
+        break;
+
+    }
+
+    return result;
+
+  }
+
   // Pass string, `read` or `write`:
   async function execute(image, lat, lon) {
 
     // Use passed in command, or use options as determiner:
-    command = ((lat && lon) ? 'write' : 'read');
+    const command = ((lat && lon) ? 'write' : 'read');
 
-    // UP NEXT:
-    // Take `image`, `lat` and `lon`, possibly destructure
-    // and pass to the below `command` call.
+    const result = await exec(
+      commands[command](
+        image,
+        lat,
+        lon,
+      )
+    );
 
-    return command;
+    const stderr = result.stderr.toString().trim();
 
-    // const result = await exec(
-    //   commands[command]({
-    //     image: util.resolvePath(o.image),
-    //     lat: o.lat,
-    //     lon: o.lon,
-    //   })
-    // );
-    //
-    // const stderr = result.stderr.toString().trim();
-    //
-    // if (stderr) {
-    //   throw new Error(stderr);
-    // } else {
-    //   return result.stdout.toString().trim();
-    // }
+    if (stderr) {
+      throw new Error(stderr);
+    } else {
+      return formatResult(command, result.stdout.toString().trim());
+    }
 
   }
 
@@ -44,7 +66,13 @@ module.exports = (() => {
       throw new TypeError(`System dependency not installed: \`${dep}\``);
     }
 
-    if ( ! ((typeof image === 'string') && (image.length > 0) && util.pathExists(image))) {
+    try {
+      image = util.resolvePath(image);
+    } catch(err) {
+      throw new Error(`Unable to resolve image path, got \`${image}\` (${typeof image})`);
+    }
+
+    if ( ! ((typeof image === 'string') && (image.length > 0) && (await util.pathExists(image)))) {
       throw new TypeError(`Expected the first argument to be a path to a preexisting image, got \`${image}\` (${typeof image})`);
     }
 
@@ -56,7 +84,7 @@ module.exports = (() => {
       throw new TypeError(`Expected the third argument to be a valid signed degrees format longitude coordinate number between \`-180\` and \`180\`, got \`${lon}\` (${typeof lon})`);
     }
 
-    return execute(image, lat, lon);
+    return await execute(image, lat, lon);
 
   }
 
