@@ -19,9 +19,9 @@ module.exports = (() => {
 
         break;
 
-      case 'delete':
+      case 'remove':
 
-        result = 'deleted';
+        result = 'removed';
 
         break;
 
@@ -32,17 +32,14 @@ module.exports = (() => {
   }
 
   // Pass string, `read` or `write`:
-  async function execute(image, lat, lon) {
-
-    // Use passed in command, or use options as determiner:
-    const command = ((lat && lon) ? 'write' : 'read');
+  async function execute(o) {
 
     const result = await exec(
-      commands[command](
-        image,
-        lat,
-        lon,
-      )
+      commands[o.command](
+        o.image,
+        o.lat,
+        o.lon,
+      ).trim()
     );
 
     const stderr = result.stderr.toString().trim();
@@ -50,20 +47,21 @@ module.exports = (() => {
     if (stderr) {
       throw new Error(stderr);
     } else {
-      return formatResult(command, result.stdout.toString().trim());
+      return formatResult(o.command, result.stdout.toString().trim());
     }
 
   }
 
   async function validate(image, lat, lon) {
 
-    const dep = 'exiftool';
+    const o = {};
+
     const check = await exec(
-      commands['check for system dep'](dep)
+      commands['check for system dep']('exiftool')
     );
 
     if ( ! (check && check.stdout && check.stdout.toString().trim().length)) {
-      throw new TypeError(`System dependency not installed: \`${dep}\``);
+      throw new TypeError('System dependency not installed: `exiftool`');
     }
 
     try {
@@ -76,15 +74,37 @@ module.exports = (() => {
       throw new TypeError(`Expected the first argument to be a path to a preexisting image, got \`${image}\` (${typeof image})`);
     }
 
-    if (lat && ( ! ((typeof lat === 'number') && (lat <= 90) && (lat >= -90)))) {
-      throw new TypeError(`Expected the second argument to be a valid signed degrees format latitude coordinate number between \`-90\` and \`90\`, got \`${lat}\` (${typeof lat})`);
+    o.image = image;
+
+    if (lat) {
+
+      if (lon) {
+
+        if (( ! ((typeof lat === 'number') && (lat >= -90) && (lat <= 90)))) {
+          throw new TypeError(`Expected the second argument to be a valid signed degrees format latitude coordinate number between \`-90\` and \`90\`, got \`${lat}\` (${typeof lat})`);
+        }
+
+        if (( ! ((typeof lon === 'number') && (lon >= -180) && (lon <= 180)))) {
+          throw new TypeError(`Expected the third argument to be a valid signed degrees format longitude coordinate number between \`-180\` and \`180\`, got \`${lon}\` (${typeof lon})`);
+        }
+
+        o.lat = lat;
+        o.lon = lon;
+        o.command = 'write';
+
+      } else if ((typeof lat === 'boolean') && (lat === true)) {
+
+        o.command = 'remove';
+
+      }
+
+    } else {
+
+      o.command = 'read';
+
     }
 
-    if (lon && ( ! ((typeof lon === 'number') && (lon <= 180) && (lon >= -180)))) {
-      throw new TypeError(`Expected the third argument to be a valid signed degrees format longitude coordinate number between \`-180\` and \`180\`, got \`${lon}\` (${typeof lon})`);
-    }
-
-    return await execute(image, lat, lon);
+    return await execute(o);
 
   }
 
