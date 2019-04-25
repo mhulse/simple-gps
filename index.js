@@ -3,7 +3,7 @@ const { commands, util } = require('./lib/index');
 
 module.exports = (() => {
 
-  function formatResult(command, result) {
+  const formatResult = (command, result) => {
 
     switch (command) {
 
@@ -29,16 +29,16 @@ module.exports = (() => {
 
     return result;
 
-  }
+  };
 
   // Pass string, `read` or `write`:
-  async function execute(o) {
+  const execute = async o => {
 
     const result = await exec(
       commands[o.command](
         o.image,
         o.lat,
-        o.lon,
+        o.lon
       ).trim()
     );
 
@@ -50,9 +50,9 @@ module.exports = (() => {
       return formatResult(o.command, result.stdout.toString().trim());
     }
 
-  }
+  };
 
-  async function validate(image, lat, lon) {
+  const validate = async (image, lat, lon) => {
 
     const o = {};
 
@@ -66,7 +66,7 @@ module.exports = (() => {
 
     try {
       image = util.resolvePath(image);
-    } catch(err) {
+    } catch (err) {
       throw new Error(`Unable to resolve image path, got \`${image}\` (${typeof image})`);
     }
 
@@ -104,9 +104,9 @@ module.exports = (() => {
 
     }
 
-    return await execute(o);
+    return execute(o);
 
-  }
+  };
 
   return validate;
 

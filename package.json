@@ -5,7 +5,8 @@
   "author": "Michael Hulse",
   "license": "Apache 2.0",
   "scripts": {
-    "test": "mocha ./test/test.js"
+    "test": "mocha ./test/test.js",
+    "example": "node ./test/example.js"
   },
   "repository": {
     "type": "git",
@@ -18,7 +19,7 @@
     "untildify": "^3.0.3"
   },
   "devDependencies": {
-    "eslint": "^5.15.3",
-    "mocha": "^6.0.2"
+    "eslint": "^5.16.0",
+    "mocha": "^6.1.4"
   }
 }
