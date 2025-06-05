@@ -1,113 +1,100 @@
-const exec = require('await-exec');
-const { commands, util } = require('./lib/index');
+import exec from 'await-exec'
+import { commands, util } from './lib/index.js'
 
-module.exports = (() => {
+const LAT_MIN = -90
+const LAT_MAX = 90
+const LON_MIN = -180
+const LON_MAX = 180
 
-  const formatResult = (command, result) => {
+const formatResult = (command, result) => {
+  switch (command) {
+    case 'write':
+      return 'written'
+    case 'read':
+      return util.makeObject(result)
+    case 'remove':
+      return 'removed'
+    default:
+      return result
+  }
+}
 
-    switch (command) {
+const execute = async (o) => {
+  const result = await exec(
+    commands[o.command](o.image, o.lat, o.lon).trim()
+  )
 
-      case 'write':
+  const stderr = result.stderr.toString().trim()
 
-        result = 'written';
+  if (stderr) {
+    throw new Error(stderr)
+  }
 
-        break;
+  return formatResult(o.command, result.stdout.toString().trim())
+}
 
-      case 'read':
+export default async function validate(image, lat, lon) {
+  const o = {}
 
-        result = util.makeObject(result);
+  const check = await exec(
+    commands['check for system dep']('exiftool')
+  )
 
-        break;
+  if (
+    !(
+      check &&
+      check.stdout &&
+      check.stdout.toString().trim().length
+    )
+  ) {
+    throw new TypeError('System dependency not installed: `exiftool`')
+  }
 
-      case 'remove':
+  try {
+    image = util.resolvePath(image)
+  } catch {
+    throw new Error(
+      `Unable to resolve image path, got \`${image}\` (${typeof image})`
+    )
+  }
 
-        result = 'removed';
+  if (
+    !(
+      typeof image === 'string' &&
+      image.length > 0 &&
+      (await util.pathExists(image))
+    )
+  ) {
+    throw new TypeError(
+      `Expected the first argument to be a path to a preexisting image, got \`${image}\` (${typeof image})`
+    )
+  }
 
-        break;
+  o.image = image
 
-    }
-
-    return result;
-
-  };
-
-  // Pass string, `read` or `write`:
-  const execute = async o => {
-
-    const result = await exec(
-      commands[o.command](
-        o.image,
-        o.lat,
-        o.lon
-      ).trim()
-    );
-
-    const stderr = result.stderr.toString().trim();
-
-    if (stderr) {
-      throw new Error(stderr);
-    } else {
-      return formatResult(o.command, result.stdout.toString().trim());
-    }
-
-  };
-
-  const validate = async (image, lat, lon) => {
-
-    const o = {};
-
-    const check = await exec(
-      commands['check for system dep']('exiftool')
-    );
-
-    if ( ! (check && check.stdout && check.stdout.toString().trim().length)) {
-      throw new TypeError('System dependency not installed: `exiftool`');
-    }
-
-    try {
-      image = util.resolvePath(image);
-    } catch (err) {
-      throw new Error(`Unable to resolve image path, got \`${image}\` (${typeof image})`);
-    }
-
-    if ( ! ((typeof image === 'string') && (image.length > 0) && (await util.pathExists(image)))) {
-      throw new TypeError(`Expected the first argument to be a path to a preexisting image, got \`${image}\` (${typeof image})`);
-    }
-
-    o.image = image;
-
-    if (lat) {
-
-      if (lon) {
-
-        if (( ! ((typeof lat === 'number') && (lat >= -90) && (lat <= 90)))) {
-          throw new TypeError(`Expected the second argument to be a valid signed degrees format latitude coordinate number between \`-90\` and \`90\`, got \`${lat}\` (${typeof lat})`);
-        }
-
-        if (( ! ((typeof lon === 'number') && (lon >= -180) && (lon <= 180)))) {
-          throw new TypeError(`Expected the third argument to be a valid signed degrees format longitude coordinate number between \`-180\` and \`180\`, got \`${lon}\` (${typeof lon})`);
-        }
-
-        o.lat = lat;
-        o.lon = lon;
-        o.command = 'write';
-
-      } else if ((typeof lat === 'boolean') && (lat === true)) {
-
-        o.command = 'remove';
-
+  if (typeof lat !== 'undefined') {
+    if (typeof lon !== 'undefined') {
+      if (!(typeof lat === 'number' && lat >= LAT_MIN && lat <= LAT_MAX)) {
+        throw new TypeError(
+          `Expected the second argument to be a valid latitude number between ${LAT_MIN} and ${LAT_MAX}, got \`${lat}\` (${typeof lat})`
+        )
       }
 
-    } else {
+      if (!(typeof lon === 'number' && lon >= LON_MIN && lon <= LON_MAX)) {
+        throw new TypeError(
+          `Expected the third argument to be a valid longitude number between ${LON_MIN} and ${LON_MAX}, got \`${lon}\` (${typeof lon})`
+        )
+      }
 
-      o.command = 'read';
-
+      o.lat = lat
+      o.lon = lon
+      o.command = 'write'
+    } else if (lat === true) {
+      o.command = 'remove'
     }
+  } else {
+    o.command = 'read'
+  }
 
-    return execute(o);
-
-  };
-
-  return validate;
-
-})();
+  return execute(o)
+}
